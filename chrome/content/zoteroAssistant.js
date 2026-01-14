@@ -220,8 +220,9 @@ var ZoteroAIAssistant = {
         },
         onItemChange: ({ paneID, doc, body, item, tabType, editable, setEnabled }) => {
           Zotero.debug("ZoteroAIAssistant: Section onItemChange, item: " + (item ? item.id : "null"));
-          // Enable for regular items (papers)
-          setEnabled(item && item.isRegularItem());
+          const isRegular = item?.isRegularItem?.();
+          const isAttachment = item?.isAttachment?.() || item?.isPDFAttachment?.();
+          setEnabled(!!(isRegular || isAttachment));
         },
         onRender: ({ body, item, editable, tabType }) => {
           Zotero.debug("ZoteroAIAssistant: Section onRender called");

@@ -33,7 +33,7 @@ ZoteroAIAssistant.Sidebar = {
    */
   init(container, item) {
     this.container = container;
-    this.currentItem = item;
+    this.currentItem = this.resolveItem(item);
     this.pendingImages = [];
     
     this.render();
@@ -54,6 +54,33 @@ ZoteroAIAssistant.Sidebar = {
     }
     const mainWindow = Zotero.getMainWindow?.();
     return mainWindow?.ZoteroAIAssistant?.PDFReader || null;
+  },
+
+  resolveItem(item) {
+    if (!item) return null;
+    try {
+      if (item.isRegularItem?.()) {
+        return item;
+      }
+      const isAttachment = item.isAttachment?.() || item.isPDFAttachment?.();
+      if (!isAttachment) {
+        return item;
+      }
+      const fromSource = item.getSource?.();
+      if (fromSource) {
+        return fromSource;
+      }
+      const parentID = item.parentItemID || item.parentID;
+      if (parentID) {
+        const parentItem = Zotero.Items.get(parentID);
+        if (parentItem) {
+          return parentItem;
+        }
+      }
+    } catch (error) {
+      Zotero.debug("ZoteroAIAssistant.Sidebar: Failed to resolve item: " + error);
+    }
+    return item;
   },
   
   /**
@@ -1285,7 +1312,7 @@ ZoteroAIAssistant.Sidebar = {
    * Update for a new item
    */
   setItem(item) {
-    this.currentItem = item;
+    this.currentItem = this.resolveItem(item);
     this.clearPendingImages();
     
     if (!this.messagesContainer) return;
