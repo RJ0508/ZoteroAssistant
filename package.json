@@ -1,0 +1,32 @@
+{
+  "name": "zotero-ai-assistant",
+  "version": "1.0.0",
+  "description": "AI-powered reading assistant for Zotero using GitHub Copilot and OpenAI Codex",
+  "author": "Yingqi Jia",
+  "license": "MIT",
+  "scripts": {
+    "build": "node scripts/build.js",
+    "build:dev": "node scripts/build.js --dev",
+    "watch": "node scripts/build.js --watch"
+  },
+  "devDependencies": {
+    "archiver": "^6.0.1",
+    "chokidar": "^3.5.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jiayingqi/zotero-ai-assistant.git"
+  },
+  "keywords": [
+    "zotero",
+    "plugin",
+    "ai",
+    "copilot",
+    "codex",
+    "research",
+    "academic"
+  ]
+}

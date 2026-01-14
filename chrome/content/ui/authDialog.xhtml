@@ -1,0 +1,320 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+
+<!DOCTYPE window>
+
+<window
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  id="zotero-ai-assistant-auth-dialog"
+  title="Connect to AI Provider"
+  width="400"
+  height="380">
+  
+  <script type="application/javascript"><![CDATA[
+    if (typeof Services === "undefined") {
+      try {
+        var { Services } = ChromeUtils.import("resource://gre/modules/Services.jsm");
+      } catch (error) {
+        var { Services } = Components.utils.import("resource://gre/modules/Services.jsm");
+      }
+    }
+    
+    var rootURI = "";
+    var provider = "copilot";
+    var pollTimer = null;
+    var mainWindow = null;
+    var ZoteroRef = null;
+    var ZAIRef = null;
+    
+    function getMainWindow() {
+      if (!mainWindow) {
+        try {
+          mainWindow = Services.wm.getMostRecentWindow("navigator:browser") || window.opener || null;
+        } catch (error) {
+          mainWindow = window.opener || null;
+        }
+      }
+      return mainWindow;
+    }
+    
+    function getZotero() {
+      if (!ZoteroRef) {
+        const win = getMainWindow();
+        ZoteroRef = win && win.Zotero ? win.Zotero : (typeof Zotero !== "undefined" ? Zotero : null);
+      }
+      return ZoteroRef;
+    }
+    
+    function getZAI() {
+      if (!ZAIRef) {
+        const win = getMainWindow();
+        ZAIRef = win && win.ZoteroAIAssistant ? win.ZoteroAIAssistant : null;
+      }
+      return ZAIRef;
+    }
+    
+    function log(message) {
+      const zotero = getZotero();
+      if (zotero && zotero.debug) {
+        zotero.debug(message);
+      } else if (typeof console !== "undefined" && console.log) {
+        console.log(message);
+      }
+    }
+    
+    function onLoad() {
+      try {
+        log("ZoteroAIAssistant Auth Dialog: onLoad");
+      
+        // Get arguments
+        if (window.arguments && window.arguments[0]) {
+          rootURI = window.arguments[0].rootURI || "";
+          provider = window.arguments[0].provider || "copilot";
+        }
+      
+        log("ZoteroAIAssistant Auth Dialog: provider=" + provider + ", rootURI=" + rootURI);
+      
+        // Update title
+        document.getElementById("zai-auth-title").textContent = 
+          provider === "copilot" ? "Connect to GitHub Copilot" : "Connect to OpenAI Codex";
+      
+        // Show correct content
+        document.getElementById("zai-auth-github").style.display = provider === "copilot" ? "block" : "none";
+        document.getElementById("zai-auth-openai").style.display = provider === "codex" ? "block" : "none";
+      
+        // Bind events
+        const bindButton = (id, handler) => {
+          const el = document.getElementById(id);
+          if (!el) return;
+          el.addEventListener("click", handler);
+          el.addEventListener("command", handler);
+        };
+        
+        bindButton("zai-github-start-btn", startGitHubAuth);
+        bindButton("zai-copy-code-btn", copyCode);
+        bindButton("zai-github-cancel-btn", cancelAuth);
+        bindButton("zai-github-done-btn", () => window.close());
+        bindButton("zai-github-retry-btn", startGitHubAuth);
+      
+        bindButton("zai-openai-start-btn", startOpenAIAuth);
+        bindButton("zai-openai-cancel-btn", cancelAuth);
+        bindButton("zai-openai-done-btn", () => window.close());
+        bindButton("zai-openai-retry-btn", startOpenAIAuth);
+      } catch (error) {
+        log("ZoteroAIAssistant Auth Dialog: onLoad failed - " + error);
+        showError(error.message || "Failed to load authentication dialog");
+      }
+    }
+    
+    function onUnload() {
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+    }
+    
+    function showStep(stepId) {
+      const prefix = provider === "copilot" ? "zai-github" : "zai-openai";
+      ["step1", "step2", "step3", "error"].forEach(step => {
+        const el = document.getElementById(prefix + "-" + step);
+        if (el) el.style.display = step === stepId ? "block" : "none";
+      });
+    }
+    
+    async function startGitHubAuth() {
+      showStep("step2");
+      
+      try {
+        // Get ZoteroAIAssistant from opener or main window
+        const ZAI = getZAI();
+        
+        if (!ZAI || !ZAI.GitHubDeviceFlow) {
+          throw new Error("GitHub auth module not loaded");
+        }
+        
+        log("ZoteroAIAssistant Auth: Starting GitHub authentication");
+        
+        // Use the authenticate() method which handles the full flow
+        const result = await ZAI.GitHubDeviceFlow.authenticate(
+          // onShowCode callback
+          (userCode, verificationUri) => {
+            log("ZoteroAIAssistant Auth: Got device code: " + userCode);
+            document.getElementById("zai-device-code").value = userCode;
+            
+            // Open browser to GitHub device verification page
+            try {
+              const zotero = getZotero();
+              if (zotero && zotero.launchURL) {
+                zotero.launchURL(verificationUri);
+              } else {
+                window.open(verificationUri);
+              }
+              log("ZoteroAIAssistant Auth: Opened URL: " + verificationUri);
+            } catch (urlError) {
+              log("ZoteroAIAssistant Auth: Failed to open URL: " + urlError.message);
+              // Show user they need to manually go to the URL
+              alert("Please manually visit: " + verificationUri + "\n\nAnd enter the code shown above.");
+            }
+          },
+          // onStatusUpdate callback
+          (status) => {
+            log("ZoteroAIAssistant Auth: Status - " + status);
+            const statusEl = document.getElementById("zai-github-status");
+            if (statusEl) {
+              switch (status) {
+                case "waiting":
+                  statusEl.textContent = "Waiting for authorization...";
+                  break;
+                case "success":
+                  statusEl.textContent = "Authorization successful!";
+                  break;
+              }
+            }
+          }
+        );
+        
+        log("ZoteroAIAssistant Auth: Authentication completed");
+        
+        // Success - show user info
+        if (result.user) {
+          document.getElementById("zai-github-user").value = "Signed in as " + result.user.login;
+        } else {
+          document.getElementById("zai-github-user").value = "Connected successfully!";
+        }
+        showStep("step3");
+        
+      } catch (error) {
+        log("ZoteroAIAssistant Auth: Error - " + error.message);
+        log("ZoteroAIAssistant Auth: Error stack - " + error.stack);
+        showError(error.message || "Authentication failed. Please try again.");
+      }
+    }
+    
+    async function startOpenAIAuth() {
+      showStep("step2");
+      
+      try {
+        const ZAI = getZAI();
+        
+        if (ZAI && ZAI.OpenAICodexOAuth) {
+          const result = await ZAI.OpenAICodexOAuth.authenticate();
+          if (result.success) {
+            showStep("step3");
+          } else {
+            showError(result.error || "Authentication failed");
+          }
+        } else {
+          throw new Error("OpenAI auth module not loaded");
+        }
+      } catch (error) {
+        showError(error.message);
+      }
+    }
+    
+    function copyCode() {
+      const code = document.getElementById("zai-device-code").value;
+      if (code && code !== "--------") {
+        const zotero = getZotero();
+        if (zotero && zotero.Utilities && zotero.Utilities.Internal) {
+          zotero.Utilities.Internal.copyTextToClipboard(code);
+        } else if (navigator && navigator.clipboard) {
+          navigator.clipboard.writeText(code);
+        }
+        const btn = document.getElementById("zai-copy-code-btn");
+        btn.label = "Copied!";
+        setTimeout(() => btn.label = "Copy", 2000);
+      }
+    }
+    
+    function cancelAuth() {
+      if (pollTimer) {
+        clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      showStep("step1");
+    }
+    
+    function showError(message) {
+      const prefix = provider === "copilot" ? "zai-github" : "zai-openai";
+      document.getElementById(prefix + "-error-msg").value = message;
+      showStep("error");
+    }
+    
+    window.addEventListener("load", onLoad);
+    window.addEventListener("unload", onUnload);
+  ]]></script>
+  
+  <vbox flex="1" style="padding: 20px; overflow: auto;">
+    <!-- Title -->
+    <label id="zai-auth-title" style="font-size: 16px; font-weight: bold; margin-bottom: 15px;">Connect to GitHub Copilot</label>
+    
+    <!-- GitHub Copilot Auth -->
+    <vbox id="zai-auth-github">
+      <!-- Step 1: Start -->
+      <vbox id="zai-github-step1">
+        <description style="margin-bottom: 15px;">Sign in with your GitHub account to access Claude, Gemini, GPT, and more through GitHub Copilot.</description>
+        <button id="zai-github-start-btn" label="Start Authentication" style="margin-top: 10px;"/>
+      </vbox>
+      
+      <!-- Step 2: Device Code -->
+      <vbox id="zai-github-step2" style="display: none;">
+        <description style="font-weight: bold;">Verify your device:</description>
+        <description style="margin-top: 10px;">1. A browser window should open automatically</description>
+        <description style="margin-top: 5px;">   If not, go to: github.com/login/device</description>
+        <description style="margin-top: 10px;">2. Enter this code:</description>
+        <hbox align="center" style="margin: 15px 0;">
+          <textbox id="zai-device-code" readonly="true" value="--------" style="font-size: 18px; font-weight: bold; font-family: monospace; width: 150px; text-align: center;"/>
+          <button id="zai-copy-code-btn" label="Copy" style="margin-left: 10px;"/>
+        </hbox>
+        <description id="zai-github-status" style="margin-top: 5px; font-style: italic;">Waiting for authorization...</description>
+        <button id="zai-github-cancel-btn" label="Cancel" style="margin-top: 15px;"/>
+      </vbox>
+      
+      <!-- Step 3: Success -->
+      <vbox id="zai-github-step3" style="display: none;">
+        <description style="color: green; font-weight: bold;">Connected successfully!</description>
+        <textbox id="zai-github-user" readonly="true" value="" style="margin: 10px 0;"/>
+        <button id="zai-github-done-btn" label="Done" style="margin-top: 10px;"/>
+      </vbox>
+      
+      <!-- Error -->
+      <vbox id="zai-github-error" style="display: none;">
+        <description style="color: red; font-weight: bold;">Authentication failed</description>
+        <textbox id="zai-github-error-msg" readonly="true" value="" style="margin: 10px 0; color: red;"/>
+        <button id="zai-github-retry-btn" label="Try Again" style="margin-top: 10px;"/>
+      </vbox>
+    </vbox>
+    
+    <!-- OpenAI Codex Auth -->
+    <vbox id="zai-auth-openai" style="display: none;">
+      <!-- Step 1: Start -->
+      <vbox id="zai-openai-step1">
+        <description style="margin-bottom: 10px;">Sign in with your ChatGPT account to access OpenAI Codex models.</description>
+        <description style="margin-bottom: 15px; font-style: italic;">Requires ChatGPT Plus or Team subscription.</description>
+        <button id="zai-openai-start-btn" label="Sign in with ChatGPT" style="margin-top: 10px;"/>
+      </vbox>
+      
+      <!-- Step 2: Waiting -->
+      <vbox id="zai-openai-step2" style="display: none;">
+        <description id="zai-openai-status">Waiting for sign-in...</description>
+        <description style="margin-top: 10px;">Complete the sign-in process in your browser.</description>
+        <button id="zai-openai-cancel-btn" label="Cancel" style="margin-top: 15px;"/>
+      </vbox>
+      
+      <!-- Step 3: Success -->
+      <vbox id="zai-openai-step3" style="display: none;">
+        <description style="color: green; font-weight: bold;">Connected to OpenAI Codex!</description>
+        <button id="zai-openai-done-btn" label="Done" style="margin-top: 15px;"/>
+      </vbox>
+      
+      <!-- Error -->
+      <vbox id="zai-openai-error" style="display: none;">
+        <description style="color: red; font-weight: bold;">Authentication failed</description>
+        <textbox id="zai-openai-error-msg" readonly="true" value="" style="margin: 10px 0; color: red;"/>
+        <button id="zai-openai-retry-btn" label="Try Again" style="margin-top: 10px;"/>
+      </vbox>
+    </vbox>
+  </vbox>
+  
+</window>

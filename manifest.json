@@ -1,0 +1,20 @@
+{
+  "manifest_version": 2,
+  "name": "Zotero AI Assistant",
+  "version": "1.0.0",
+  "description": "AI-powered reading assistant for academic papers using GitHub Copilot and OpenAI Codex",
+  "author": "Yingqi Jia",
+  "homepage_url": "https://github.com/jiayingqi/zotero-ai-assistant",
+  "icons": {
+    "48": "chrome/skin/default/icons/icon-48.svg",
+    "96": "chrome/skin/default/icons/icon-96.svg"
+  },
+  "applications": {
+    "zotero": {
+      "id": "zotero-ai-assistant@jiayingqi.outlook.com",
+      "update_url": "https://raw.githubusercontent.com/jiayingqi/zotero-ai-assistant/main/update.json",
+      "strict_min_version": "7.0",
+      "strict_max_version": "7.99"
+    }
+  }
+}

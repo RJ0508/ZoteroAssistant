@@ -1,0 +1,251 @@
+<vbox xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+      xmlns:html="http://www.w3.org/1999/xhtml"
+      id="zotero-ai-assistant-preferences">
+  
+  <html:div class="zai-prefs-container">
+    
+    <!-- Account Section -->
+    <groupbox>
+      <label><html:h2>Account</html:h2></label>
+      
+      <!-- GitHub Copilot -->
+      <html:div class="zai-prefs-account">
+        <html:div class="zai-prefs-account-header">
+          <html:div class="zai-prefs-account-info">
+            <html:span class="zai-prefs-account-name">GitHub Copilot</html:span>
+            <html:span class="zai-prefs-account-desc">Access Claude, Gemini, GPT and other models via your Copilot subscription</html:span>
+          </html:div>
+          <html:div class="zai-prefs-account-status" id="zai-copilot-status">
+            <html:span class="zai-status-badge zai-status-disconnected">Not connected</html:span>
+          </html:div>
+        </html:div>
+        <html:div class="zai-prefs-account-actions">
+          <html:span id="zai-copilot-user" class="zai-prefs-user"></html:span>
+          <html:button id="zai-copilot-connect-btn" class="zai-prefs-btn zai-prefs-btn-primary">Connect</html:button>
+          <html:button id="zai-copilot-disconnect-btn" class="zai-prefs-btn zai-prefs-btn-danger" style="display: none;">Disconnect</html:button>
+        </html:div>
+      </html:div>
+    </groupbox>
+    
+    <!-- Model Settings Section -->
+    <groupbox>
+      <label><html:h2>Model</html:h2></label>
+      
+      <!-- Default Provider -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-default-provider">AI Provider</html:label>
+        <html:select id="zai-default-provider" class="zai-prefs-select">
+          <html:option value="copilot">GitHub Copilot</html:option>
+          <html:option value="ollama">Ollama (Local)</html:option>
+          <html:option value="lmstudio">LM Studio (Local)</html:option>
+        </html:select>
+        <html:span class="zai-prefs-hint">Choose where to run AI models.</html:span>
+      </html:div>
+      
+      <!-- Default Model -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-default-model">Default Model</html:label>
+        <html:select id="zai-default-model" class="zai-prefs-select">
+          <!-- Populated dynamically -->
+        </html:select>
+        <html:span class="zai-prefs-hint">Choose the AI model to use for conversations.</html:span>
+      </html:div>
+    </groupbox>
+
+    <!-- Task Model Overrides Section -->
+    <groupbox>
+      <label><html:h2>Task Models</html:h2></label>
+      <html:div class="zai-prefs-field">
+        <html:span class="zai-prefs-hint">Override the default model for specific actions. Leave blank to use the Default Model.</html:span>
+      </html:div>
+      <html:div class="zai-prefs-field-group">
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-task-model-summarize">Summarize</html:label>
+          <html:select id="zai-task-model-summarize" class="zai-prefs-select"></html:select>
+        </html:div>
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-task-model-keypoints">Key Points</html:label>
+          <html:select id="zai-task-model-keypoints" class="zai-prefs-select"></html:select>
+        </html:div>
+      </html:div>
+      <html:div class="zai-prefs-field-group">
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-task-model-methods">Methods</html:label>
+          <html:select id="zai-task-model-methods" class="zai-prefs-select"></html:select>
+        </html:div>
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-task-model-findings">Findings</html:label>
+          <html:select id="zai-task-model-findings" class="zai-prefs-select"></html:select>
+        </html:div>
+      </html:div>
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-task-model-compare">Compare</html:label>
+        <html:select id="zai-task-model-compare" class="zai-prefs-select"></html:select>
+      </html:div>
+    </groupbox>
+    
+    <!-- Translation Settings Section -->
+    <groupbox>
+      <label><html:h2>Translation</html:h2></label>
+      
+      <!-- Target Language -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-translate-language">Translate To</html:label>
+        <html:select id="zai-translate-language" class="zai-prefs-select">
+          <html:option value="en">English</html:option>
+          <html:option value="zh">Chinese (中文)</html:option>
+          <html:option value="es">Spanish (Español)</html:option>
+          <html:option value="fr">French (Français)</html:option>
+          <html:option value="de">German (Deutsch)</html:option>
+          <html:option value="ja">Japanese (日本語)</html:option>
+          <html:option value="ko">Korean (한국어)</html:option>
+          <html:option value="pt">Portuguese (Português)</html:option>
+          <html:option value="ru">Russian (Русский)</html:option>
+          <html:option value="ar">Arabic (العربية)</html:option>
+        </html:select>
+        <html:span class="zai-prefs-hint">Default language for the Translate action.</html:span>
+      </html:div>
+    </groupbox>
+    
+    <!-- UI Settings Section -->
+    <groupbox>
+      <label><html:h2>Interface</html:h2></label>
+      
+      <!-- UI Mode -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-ui-mode">Default View</html:label>
+        <html:select id="zai-ui-mode" class="zai-prefs-select">
+          <html:option value="sidebar">Sidebar (in item pane)</html:option>
+          <html:option value="floating">Floating Window</html:option>
+        </html:select>
+      </html:div>
+      
+      <!-- Floating Window Size -->
+      <html:div class="zai-prefs-field-group">
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-window-width">Window Width</html:label>
+          <html:input type="number" id="zai-window-width" class="zai-prefs-input" min="300" max="800" value="420"/>
+        </html:div>
+        <html:div class="zai-prefs-field zai-prefs-field-half">
+          <html:label class="zai-prefs-label" for="zai-window-height">Window Height</html:label>
+          <html:input type="number" id="zai-window-height" class="zai-prefs-input" min="400" max="1000" value="650"/>
+        </html:div>
+      </html:div>
+    </groupbox>
+    
+    <!-- Keyboard Shortcuts Section -->
+    <groupbox>
+      <label><html:h2>Keyboard Shortcuts</html:h2></label>
+      
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-shortcut-toggle">Toggle AI Assistant</html:label>
+        <html:input type="text" id="zai-shortcut-toggle" class="zai-prefs-input zai-shortcut-input" 
+          placeholder="e.g., Z" value="Z"/>
+        <html:span class="zai-prefs-hint">Key to press with Ctrl+Shift (Cmd+Shift on Mac)</html:span>
+      </html:div>
+      
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-shortcut-translate">Translate Selection</html:label>
+        <html:input type="text" id="zai-shortcut-translate" class="zai-prefs-input zai-shortcut-input" 
+          placeholder="e.g., T" value="T"/>
+      </html:div>
+      
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-shortcut-explain">Explain Selection</html:label>
+        <html:input type="text" id="zai-shortcut-explain" class="zai-prefs-input zai-shortcut-input" 
+          placeholder="e.g., E" value="E"/>
+      </html:div>
+      
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-shortcut-summarize">Summarize Paper</html:label>
+        <html:input type="text" id="zai-shortcut-summarize" class="zai-prefs-input zai-shortcut-input" 
+          placeholder="e.g., S" value="S"/>
+      </html:div>
+      
+      <html:span class="zai-prefs-hint">All shortcuts use Ctrl+Shift (Cmd+Shift on Mac) + your chosen key. Restart Zotero after changing.</html:span>
+    </groupbox>
+    
+    <!-- Local Models Section -->
+    <groupbox>
+      <label><html:h2>Local Models (Optional)</html:h2></label>
+      
+      <!-- Ollama -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-ollama-endpoint">Ollama Endpoint</html:label>
+        <html:input type="text" id="zai-ollama-endpoint" class="zai-prefs-input" 
+          placeholder="http://localhost:11434"/>
+        <html:span class="zai-prefs-hint">Leave default for local Ollama installation.</html:span>
+      </html:div>
+      
+      <!-- LM Studio -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-lmstudio-endpoint">LM Studio Endpoint</html:label>
+        <html:input type="text" id="zai-lmstudio-endpoint" class="zai-prefs-input" 
+          placeholder="http://localhost:1234"/>
+        <html:span class="zai-prefs-hint">Leave default for local LM Studio installation.</html:span>
+      </html:div>
+      
+      <html:div class="zai-prefs-field">
+        <html:button id="zai-test-local-btn" class="zai-prefs-btn">Test Local Connection</html:button>
+        <html:span id="zai-local-status" class="zai-prefs-hint"></html:span>
+      </html:div>
+    </groupbox>
+    
+    <!-- Advanced Settings Section -->
+    <groupbox>
+      <label><html:h2>Advanced</html:h2></label>
+      
+      <!-- Custom System Prompt -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-system-prompt">Custom System Prompt</html:label>
+        <html:textarea id="zai-system-prompt" class="zai-prefs-textarea" rows="4" 
+          placeholder="Leave empty to use the default prompt for academic paper assistance..."></html:textarea>
+        <html:span class="zai-prefs-hint">Customize how the AI assistant behaves when answering questions.</html:span>
+      </html:div>
+      
+      <!-- Temperature/Creativity -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-temperature">Creativity Level</html:label>
+        <html:div class="zai-prefs-slider-container">
+          <html:input type="range" id="zai-temperature" class="zai-prefs-slider" min="0" max="100" value="30"/>
+          <html:span id="zai-temperature-value" class="zai-prefs-slider-value">0.3</html:span>
+        </html:div>
+        <html:span class="zai-prefs-hint">Lower values (0.0-0.3) for precise answers, higher (0.7-1.0) for creative responses.</html:span>
+      </html:div>
+      
+      <!-- Max Response Length -->
+      <html:div class="zai-prefs-field">
+        <html:label class="zai-prefs-label" for="zai-max-tokens">Max Response Length</html:label>
+        <html:select id="zai-max-tokens" class="zai-prefs-select">
+          <html:option value="500">Short (500 tokens)</html:option>
+          <html:option value="1000">Medium (1000 tokens)</html:option>
+          <html:option value="2000" selected="selected">Standard (2000 tokens)</html:option>
+          <html:option value="4000">Long (4000 tokens)</html:option>
+          <html:option value="8000">Very Long (8000 tokens)</html:option>
+        </html:select>
+        <html:span class="zai-prefs-hint">Limit the length of AI responses.</html:span>
+      </html:div>
+      
+      <!-- Save Conversation History -->
+      <html:div class="zai-prefs-field zai-prefs-checkbox-field">
+        <html:input type="checkbox" id="zai-save-history" class="zai-prefs-checkbox"/>
+        <html:label class="zai-prefs-label" for="zai-save-history">Save conversation history per paper</html:label>
+      </html:div>
+      
+      <!-- Clear Conversation Data -->
+      <html:div class="zai-prefs-field">
+        <html:button id="zai-clear-conversations-btn" class="zai-prefs-btn">Clear All Conversations</html:button>
+        <html:span class="zai-prefs-hint">Remove all saved conversation history.</html:span>
+      </html:div>
+    </groupbox>
+    
+    <!-- About Section -->
+    <groupbox class="zai-prefs-about">
+      <html:div class="zai-prefs-about-content">
+        <html:span class="zai-prefs-version">Zotero AI Assistant v1.0.0</html:span>
+        <html:button id="zai-github-repo" class="zai-prefs-link-btn">GitHub</html:button>
+      </html:div>
+    </groupbox>
+    
+  </html:div>
+</vbox>

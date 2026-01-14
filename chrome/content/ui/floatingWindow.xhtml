@@ -1,0 +1,281 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-stylesheet href="chrome://zotero/skin/zotero.css" type="text/css"?>
+
+<!DOCTYPE window>
+
+<window
+  xmlns="http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul"
+  xmlns:html="http://www.w3.org/1999/xhtml"
+  id="zotero-ai-assistant-window"
+  title="AI Assistant"
+  width="380"
+  height="520"
+  persist="screenX screenY width height">
+  
+  <script type="application/javascript"><![CDATA[
+    // Get arguments passed to window
+    var args = window.arguments && window.arguments[0] ? window.arguments[0] : {};
+    var rootURI = args.rootURI || "";
+    
+    // Load CSS
+    if (rootURI) {
+      let link = document.createElementNS("http://www.w3.org/1999/xhtml", "link");
+      link.rel = "stylesheet";
+      link.href = rootURI + "chrome/skin/default/zotero-assistant.css";
+      document.documentElement.appendChild(link);
+    }
+    
+    var ZoteroAIAssistantFloating = {
+      currentItem: null,
+      
+      init() {
+        Zotero.debug("ZoteroAIAssistantFloating: init");
+        this.bindEvents();
+        this.updateCurrentItem();
+        this.updateAuthStatus();
+      },
+      
+      bindEvents() {
+        // Auth button
+        document.getElementById("zai-auth-btn")?.addEventListener("click", () => {
+          const provider = document.getElementById("zai-provider-select")?.value || "copilot";
+          if (typeof ZoteroAIAssistant !== "undefined") {
+            ZoteroAIAssistant.openAuthDialog(provider);
+          }
+        });
+        
+        // Provider select
+        document.getElementById("zai-provider-select")?.addEventListener("change", (e) => {
+          Zotero.Prefs.set("extensions.zotero-ai-assistant.defaultProvider", e.target.value, true);
+          this.updateAuthStatus();
+        });
+        
+        // Model select
+        document.getElementById("zai-model-select")?.addEventListener("change", (e) => {
+          Zotero.Prefs.set("extensions.zotero-ai-assistant.defaultModel", e.target.value, true);
+        });
+        
+        // Quick actions
+        document.getElementById("zai-quick-actions")?.addEventListener("click", (e) => {
+          const btn = e.target.closest(".zai-action-btn");
+          if (btn) this.handleQuickAction(btn.dataset.action);
+        });
+        
+        // Send button
+        document.getElementById("zai-send-btn")?.addEventListener("click", () => this.sendMessage());
+        
+        // Input
+        const input = document.getElementById("zai-input");
+        input?.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            this.sendMessage();
+          }
+        });
+        
+        // Settings button
+        document.getElementById("zai-settings-btn")?.addEventListener("click", () => {
+          if (typeof ZoteroAIAssistant !== "undefined") {
+            ZoteroAIAssistant.openPreferences();
+          }
+        });
+      },
+      
+      updateCurrentItem() {
+        const zp = Zotero.getActiveZoteroPane();
+        const items = zp?.getSelectedItems() || [];
+        this.currentItem = items.find(item => item.isRegularItem()) || null;
+        
+        const titleEl = document.getElementById("zai-paper-title");
+        if (titleEl) {
+          titleEl.textContent = this.currentItem 
+            ? this.currentItem.getField("title") 
+            : "No paper selected";
+        }
+      },
+      
+      async updateAuthStatus() {
+        const authStatus = document.getElementById("zai-auth-status");
+        if (!authStatus) return;
+        
+        let isAuthenticated = false;
+        
+        try {
+          if (typeof ZoteroAIAssistant !== "undefined" && ZoteroAIAssistant.GitHubDeviceFlow) {
+            isAuthenticated = await ZoteroAIAssistant.GitHubDeviceFlow.hasValidSession();
+          }
+        } catch (e) {
+          Zotero.debug("ZoteroAIAssistantFloating: Auth check error: " + e);
+        }
+        
+        authStatus.style.display = isAuthenticated ? "none" : "flex";
+      },
+      
+      handleQuickAction(action) {
+        const prompts = {
+          summarize: "Please provide a concise summary of this paper.",
+          keypoints: "What are the key points of this paper?",
+          methods: "Explain the methodology used in this paper.",
+          findings: "What are the main findings of this paper?"
+        };
+        
+        const input = document.getElementById("zai-input");
+        if (input && prompts[action]) {
+          input.value = prompts[action];
+          this.sendMessage();
+        }
+      },
+      
+      async sendMessage() {
+        const input = document.getElementById("zai-input");
+        const content = input?.value?.trim();
+        if (!content) return;
+        
+        const messagesEl = document.getElementById("zai-messages");
+        
+        // Clear welcome
+        const welcome = messagesEl?.querySelector(".zai-welcome");
+        if (welcome) welcome.remove();
+        
+        // Add user message
+        this.appendMessage("user", content);
+        input.value = "";
+        
+        // Add assistant placeholder
+        const assistantMsg = this.appendMessage("assistant", "Thinking...");
+        
+        try {
+          if (typeof ZoteroAIAssistant !== "undefined" && ZoteroAIAssistant.ChatManager) {
+            ZoteroAIAssistant.ChatManager.setCurrentItem(this.currentItem);
+            const result = await ZoteroAIAssistant.ChatManager.sendMessage(content, {
+              item: this.currentItem
+            });
+            
+            if (result.success) {
+              assistantMsg.querySelector(".zai-message-content").innerHTML = this.renderMarkdown(result.content);
+            } else {
+              assistantMsg.querySelector(".zai-message-content").textContent = "Error: " + result.error;
+            }
+          } else {
+            assistantMsg.querySelector(".zai-message-content").textContent = "Chat module not available";
+          }
+        } catch (error) {
+          assistantMsg.querySelector(".zai-message-content").textContent = "Error: " + error.message;
+        }
+      },
+      
+      appendMessage(role, content, useMarkdown = false) {
+        const messagesEl = document.getElementById("zai-messages");
+        const msg = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+        msg.className = "zai-message zai-message-" + role;
+        
+        const contentEl = document.createElementNS("http://www.w3.org/1999/xhtml", "div");
+        contentEl.className = "zai-message-content";
+        
+        if (role === "assistant" && useMarkdown) {
+          contentEl.innerHTML = this.renderMarkdown(content);
+        } else {
+          contentEl.textContent = content;
+        }
+        
+        msg.appendChild(contentEl);
+        messagesEl.appendChild(msg);
+        messagesEl.scrollTop = messagesEl.scrollHeight;
+        
+        return msg;
+      },
+      
+      renderMarkdown(text) {
+        if (!text) return "";
+        
+        let html = text
+          // Escape HTML first
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;")
+          // Code blocks
+          .replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>')
+          // Inline code
+          .replace(/`([^`]+)`/g, '<code>$1</code>')
+          // Bold
+          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+          // Italic
+          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+          // Headers
+          .replace(/^### (.+)$/gm, '<h4>$1</h4>')
+          .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+          .replace(/^# (.+)$/gm, '<h2>$1</h2>')
+          // Lists
+          .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+          .replace(/^[-*] (.+)$/gm, '<li>$1</li>')
+          // Line breaks
+          .replace(/\n/g, '<br/>');
+        
+        return html;
+      },
+      
+      destroy() {
+        Zotero.debug("ZoteroAIAssistantFloating: destroy");
+      }
+    };
+    
+    window.addEventListener("load", () => ZoteroAIAssistantFloating.init());
+    window.addEventListener("unload", () => ZoteroAIAssistantFloating.destroy());
+  ]]></script>
+  
+  <html:div id="zai-floating-root" class="zai-floating-window">
+    <html:div class="zai-floating-header">
+      <html:div class="zai-floating-title">
+        <html:span>AI Assistant</html:span>
+      </html:div>
+      <html:div class="zai-floating-controls">
+        <html:button id="zai-pin-btn" class="zai-icon-btn" title="Keep on top">Pin</html:button>
+        <html:button id="zai-settings-btn" class="zai-icon-btn" title="Settings">Settings</html:button>
+      </html:div>
+    </html:div>
+    
+    <html:div id="zai-paper-info" class="zai-paper-info">
+      <html:span id="zai-paper-title" class="zai-paper-title">No paper selected</html:span>
+    </html:div>
+    
+    <html:div id="zai-auth-status" class="zai-auth-status">
+      <html:span class="zai-status-text">Connect to use AI</html:span>
+      <html:button id="zai-auth-btn" class="zai-auth-btn">Connect</html:button>
+    </html:div>
+    
+    <html:div class="zai-provider-selector">
+      <html:select id="zai-provider-select">
+        <html:option value="copilot">GitHub Copilot</html:option>
+      </html:select>
+      <html:select id="zai-model-select">
+        <html:option value="grok-code-fast-1">Grok Code Fast</html:option>
+        <html:option value="claude-sonnet-4">Claude Sonnet 4</html:option>
+        <html:option value="gpt-4o">GPT-4o</html:option>
+        <html:option value="gpt-4.1">GPT-4.1</html:option>
+        <html:option value="o3-mini">o3-mini</html:option>
+      </html:select>
+    </html:div>
+    
+    <html:div id="zai-messages" class="zai-messages">
+      <html:div class="zai-welcome">
+        <html:div class="zai-welcome-text">Ask me anything about your paper!</html:div>
+      </html:div>
+    </html:div>
+    
+    <html:div id="zai-quick-actions" class="zai-quick-actions zai-quick-actions-grid">
+      <html:button class="zai-action-btn" data-action="summarize">Summarize</html:button>
+      <html:button class="zai-action-btn" data-action="keypoints">Key Points</html:button>
+      <html:button class="zai-action-btn" data-action="methods">Methods</html:button>
+      <html:button class="zai-action-btn" data-action="findings">Findings</html:button>
+    </html:div>
+    
+    <html:div id="zai-attachments" class="zai-attachments"></html:div>
+
+    <html:div class="zai-input-area">
+      <html:button id="zai-attach-btn" class="zai-attach-btn" title="Attach image">+</html:button>
+      <html:textarea id="zai-input" placeholder="Ask about this paper..." rows="1"></html:textarea>
+      <html:button id="zai-send-btn" title="Send message">Send</html:button>
+    </html:div>
+  </html:div>
+  
+</window>

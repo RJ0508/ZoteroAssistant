@@ -1,0 +1,9 @@
+content zotero-ai-assistant chrome/content/
+locale zotero-ai-assistant en-US chrome/locale/en-US/
+locale zotero-ai-assistant en-GB chrome/locale/en-US/
+locale zotero-ai-assistant en-AU chrome/locale/en-US/
+locale zotero-ai-assistant en-CA chrome/locale/en-US/
+locale zotero-ai-assistant en-NZ chrome/locale/en-US/
+locale zotero-ai-assistant zh-CN chrome/locale/en-US/
+locale zotero-ai-assistant zh-TW chrome/locale/en-US/
+skin zotero-ai-assistant default chrome/skin/default/
