@@ -14,11 +14,17 @@ Zotero Assistant is a Zotero add-on that brings AI-powered paper understanding i
 ## Requirements
 
 - Zotero 7
-- Node.js (for building the XPI)
 - GitHub Copilot subscription if you use Copilot models
 - LM Studio or Ollama for local models
 
+## Install (Release)
+
+1) Download the latest `.xpi` from https://github.com/RJ0508/ZoteroAssistant/releases
+2) In Zotero: Tools -> Add-ons -> Install Add-on From File... and select the `.xpi`.
+
 ## Install (from source)
+
+Requires Node.js >= 18.
 
 1) Install dependencies:
 
@@ -72,4 +78,3 @@ Open Zotero Settings -> AI Assistant:
 
 - No models showing for local provider: make sure the local server is running, then reopen Preferences.
 - Copilot not connected: use the Connect button in Settings -> AI Assistant.
-
