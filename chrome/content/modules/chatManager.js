@@ -9,6 +9,7 @@ var ZoteroAIAssistant = ZoteroAIAssistant || {};
 ZoteroAIAssistant.ChatManager = {
   // Conversation history per item
   conversations: new Map(),
+  conversationIds: new Map(),
   
   // Current conversation
   currentItemId: null,
@@ -97,11 +98,14 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
     if (!item) {
       this.currentItemId = null;
       this.currentMessages = [];
+      this.currentConversationId = null;
       return;
     }
     
-    this.currentItemId = item.id;
-    this.currentMessages = this.getConversation(item.id);
+    const itemId = item.id;
+    this.currentItemId = itemId;
+    this.currentMessages = this.getConversation(itemId);
+    this.currentConversationId = this.conversationIds.get(itemId) || null;
     
     // Add paper context if starting fresh
     if (this.currentMessages.length === 0) {
@@ -166,6 +170,8 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
     if (item) {
       this.setCurrentItem(item);
     }
+
+    await this.ensureConversationLoaded(item);
     
     // Build messages array
     const messages = this.buildMessagesForRequest(content, selectedText, images);
@@ -290,12 +296,22 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
   /**
    * Clear conversation for current item
    */
-  clearConversation() {
-    if (this.currentItemId) {
-      this.conversations.delete(this.currentItemId);
-      this.currentMessages = [];
-      this.saveConversation();
+  async clearConversation() {
+    const itemId = this.currentItemId;
+    if (!itemId) return false;
+
+    this.conversations.delete(itemId);
+    this.currentMessages = [];
+    this.currentConversationId = null;
+    this.conversationIds.delete(itemId);
+
+    try {
+      await ZoteroAIAssistant.ConversationStorage?.clearConversations(itemId);
+    } catch (error) {
+      Zotero.debug("ZoteroAIAssistant.ChatManager: Clear error: " + error);
     }
+
+    return true;
   },
   
   // Current conversation ID for updates
@@ -314,19 +330,26 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
     if (messages.length === 0) return;
     
     try {
+      let updated = false;
       if (this.currentConversationId) {
         // Update existing conversation
-        await ZoteroAIAssistant.ConversationStorage.updateConversation(
+        updated = await ZoteroAIAssistant.ConversationStorage.updateConversation(
           this.currentItemId,
           this.currentConversationId,
           messages
         );
-      } else {
+      }
+
+      if (!updated) {
         // Create new conversation
         this.currentConversationId = await ZoteroAIAssistant.ConversationStorage.saveConversation(
           this.currentItemId,
           messages
         );
+      }
+
+      if (this.currentConversationId) {
+        this.conversationIds.set(this.currentItemId, this.currentConversationId);
       }
     } catch (error) {
       Zotero.debug("ZoteroAIAssistant.ChatManager: Save error: " + error);
@@ -347,6 +370,7 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
       this.currentConversationId = conversationId;
       this.currentMessages = conversation.messages || [];
       this.conversations.set(itemId, this.currentMessages);
+      this.conversationIds.set(itemId, conversationId);
       
       return true;
     } catch (error) {
@@ -370,6 +394,7 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
     this.currentMessages = [];
     if (this.currentItemId) {
       this.conversations.set(this.currentItemId, []);
+      this.conversationIds.delete(this.currentItemId);
     }
   },
   
@@ -377,7 +402,56 @@ Always be accurate and cite specific parts of the paper when relevant. If you're
    * Delete a saved conversation
    */
   async deleteConversation(itemId, conversationId) {
+    if (this.conversationIds.get(itemId) === conversationId) {
+      this.conversationIds.delete(itemId);
+      if (this.currentItemId === itemId) {
+        this.currentConversationId = null;
+      }
+    }
     return await ZoteroAIAssistant.ConversationStorage.deleteConversation(itemId, conversationId);
+  },
+
+  getLatestConversation(conversations) {
+    if (!Array.isArray(conversations) || conversations.length === 0) return null;
+    return [...conversations].sort((a, b) => {
+      const aTime = Date.parse(a.updatedAt || a.createdAt || 0) || 0;
+      const bTime = Date.parse(b.updatedAt || b.createdAt || 0) || 0;
+      return bTime - aTime;
+    })[0];
+  },
+
+  async ensureConversationLoaded(item) {
+    const itemId = item?.id || this.currentItemId;
+    if (!itemId) return false;
+
+    const saveHistory = Zotero.Prefs.get("extensions.zotero-ai-assistant.saveConversationHistory", true);
+    if (!saveHistory || !ZoteroAIAssistant.ConversationStorage) return false;
+
+    const existing = this.conversations.get(itemId) || [];
+    const hasNonSystem = existing.some(m => m.role === "user" || m.role === "assistant");
+    if (hasNonSystem && this.conversationIds.get(itemId)) {
+      return false;
+    }
+
+    try {
+      const conversations = await ZoteroAIAssistant.ConversationStorage.getConversations(itemId);
+      if (!conversations.length) return false;
+
+      const latest = this.getLatestConversation(conversations);
+      if (!latest || !latest.messages || latest.messages.length === 0) return false;
+
+      this.conversations.set(itemId, latest.messages);
+      this.currentItemId = itemId;
+      this.currentConversationId = latest.id || null;
+      this.currentMessages = latest.messages;
+      if (latest.id) {
+        this.conversationIds.set(itemId, latest.id);
+      }
+      return true;
+    } catch (error) {
+      Zotero.debug("ZoteroAIAssistant.ChatManager: Load latest error: " + error);
+      return false;
+    }
   },
   
   /**

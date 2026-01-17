@@ -330,9 +330,12 @@ ZoteroAIAssistant.GitHubDeviceFlow = {
    * Check if we have a valid Copilot session
    */
   async hasValidSession() {
-    return await ZoteroAIAssistant.TokenStorage.hasValidToken(
-      ZoteroAIAssistant.TokenStorage.REALMS.GITHUB_COPILOT_SESSION
-    );
+    try {
+      const token = await this.getSessionToken();
+      return !!token;
+    } catch (error) {
+      return false;
+    }
   },
   
   /**

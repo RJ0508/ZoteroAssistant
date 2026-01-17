@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "Zotero AI Assistant",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "AI-powered reading assistant for academic papers using GitHub Copilot and OpenAI Codex",
   "author": "Yingqi Jia",
   "homepage_url": "https://github.com/RJ0508/ZoteroAssistant",

@@ -234,14 +234,7 @@ var ZoteroAIAssistant = {
         },
         sectionButtons: [
           {
-            type: "popout",
-            icon: this.rootURI + "chrome/skin/default/icons/popout.svg",
-            onClick: ({ paneID, doc, body }) => {
-              this.openFloatingWindow();
-            }
-          },
-          {
-            type: "settings", 
+            type: "settings",
             icon: this.rootURI + "chrome/skin/default/icons/settings.svg",
             onClick: ({ paneID, doc, body }) => {
               this.openPreferences();
@@ -978,10 +971,9 @@ var ZoteroAIAssistant = {
     const uiMode = Zotero.Prefs.get("extensions.zotero-ai-assistant.uiMode", true);
     
     if (uiMode === "floating") {
-      this.toggleFloatingWindow(forceShow);
-    } else {
-      this.toggleSidebar();
+      Zotero.Prefs.set("extensions.zotero-ai-assistant.uiMode", "sidebar", true);
     }
+    this.toggleSidebar();
   },
   
   /**
@@ -996,29 +988,15 @@ var ZoteroAIAssistant = {
    * Toggle the floating window
    */
   toggleFloatingWindow() {
-    // If window exists, close it; otherwise open it
-    if (this.floatingWindow && !this.floatingWindow.closed) {
-      this.floatingWindow.close();
-      this.floatingWindow = null;
-    } else {
-      this.openFloatingWindow();
-    }
+    this.toggleSidebar();
   },
   
   /**
    * Open the floating window
    */
   openFloatingWindow() {
-    const width = Zotero.Prefs.get("extensions.zotero-ai-assistant.floatingWindowWidth", true) || 420;
-    const height = Zotero.Prefs.get("extensions.zotero-ai-assistant.floatingWindowHeight", true) || 650;
-    
-    this.floatingWindow = Services.ww.openWindow(
-      Services.wm.getMostRecentWindow("navigator:browser") || null,
-      this.getChromeContentURL("ui/floatingWindow.xhtml"),
-      "ZoteroAIAssistant",
-      `chrome,dialog=no,resizable=yes,width=${width},height=${height}`,
-      { rootURI: this.rootURI }
-    );
+    Zotero.debug("ZoteroAIAssistant: Floating window disabled; using sidebar.");
+    this.toggleSidebar();
   },
   
   /**

@@ -79,6 +79,11 @@
             ZoteroAIAssistant.openPreferences();
           }
         });
+
+        // Clear history button
+        document.getElementById("zai-clear-btn")?.addEventListener("click", () => {
+          this.clearHistory();
+        });
       },
       
       updateCurrentItem() {
@@ -92,6 +97,77 @@
             ? this.currentItem.getField("title") 
             : "No paper selected";
         }
+
+        this.loadConversation();
+      },
+
+      showWelcome(message = "Ask me anything about your paper!") {
+        const messagesEl = document.getElementById("zai-messages");
+        if (!messagesEl) return;
+        messagesEl.innerHTML = `
+          <div class="zai-welcome">
+            <div class="zai-welcome-text">${message}</div>
+          </div>
+        `;
+      },
+
+      async loadConversation() {
+        const messagesEl = document.getElementById("zai-messages");
+        if (!messagesEl) return;
+
+        if (!this.currentItem) {
+          this.showWelcome("Select a paper in Zotero to start chatting");
+          return;
+        }
+
+        if (typeof ZoteroAIAssistant === "undefined" || !ZoteroAIAssistant.ChatManager) {
+          this.showWelcome("AI Assistant not available");
+          return;
+        }
+
+        ZoteroAIAssistant.ChatManager.setCurrentItem(this.currentItem);
+        await ZoteroAIAssistant.ChatManager.ensureConversationLoaded(this.currentItem);
+
+        const messages = ZoteroAIAssistant.ChatManager.getDisplayMessages();
+        messagesEl.innerHTML = "";
+
+        if (messages.length === 0) {
+          this.showWelcome();
+          return;
+        }
+
+        for (const msg of messages) {
+          if (msg.role === "user" || msg.role === "assistant") {
+            this.appendMessage(msg.role, msg.content, msg.role === "assistant");
+          }
+        }
+      },
+
+      async clearHistory() {
+        if (!this.currentItem) {
+          this.showWelcome("No paper selected");
+          return;
+        }
+
+        let confirmed = true;
+        if (typeof Services !== "undefined" && Services.prompt?.confirm) {
+          confirmed = Services.prompt.confirm(
+            window,
+            "Clear History",
+            "Clear conversation history for this paper?"
+          );
+        } else if (typeof window.confirm === "function") {
+          confirmed = window.confirm("Clear conversation history for this paper?");
+        }
+
+        if (!confirmed) return;
+
+        if (typeof ZoteroAIAssistant !== "undefined" && ZoteroAIAssistant.ChatManager) {
+          ZoteroAIAssistant.ChatManager.setCurrentItem(this.currentItem);
+          await ZoteroAIAssistant.ChatManager.clearConversation();
+        }
+
+        this.showWelcome("Conversation cleared");
       },
       
       async updateAuthStatus() {
@@ -230,6 +306,7 @@
       </html:div>
       <html:div class="zai-floating-controls">
         <html:button id="zai-pin-btn" class="zai-icon-btn" title="Keep on top">Pin</html:button>
+        <html:button id="zai-clear-btn" class="zai-icon-btn zai-icon-btn-danger" title="Clear history">Clear</html:button>
         <html:button id="zai-settings-btn" class="zai-icon-btn" title="Settings">Settings</html:button>
       </html:div>
     </html:div>

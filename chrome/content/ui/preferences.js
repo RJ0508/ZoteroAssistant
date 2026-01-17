@@ -93,7 +93,11 @@ var ZoteroAIAssistantPrefs = {
       this.updateModelOptions();
       
       // UI mode
-      const uiMode = Zotero.Prefs.get("extensions.zotero-ai-assistant.uiMode", true) || "sidebar";
+      let uiMode = Zotero.Prefs.get("extensions.zotero-ai-assistant.uiMode", true) || "sidebar";
+      if (uiMode === "floating") {
+        uiMode = "sidebar";
+        Zotero.Prefs.set("extensions.zotero-ai-assistant.uiMode", uiMode, true);
+      }
       const uiModeEl = document.getElementById("zai-ui-mode");
       if (uiModeEl) uiModeEl.value = uiMode;
       

@@ -24,8 +24,7 @@ ZoteroAIAssistant.PDFReader = {
     { id: "explain", label: "Explain" },
     { id: "define", label: "Define" },
     { id: "summarize", label: "Summarize" },
-    { id: "paraphrase", label: "Paraphrase" },
-    { id: "ask", label: "Ask AI" }
+    { id: "paraphrase", label: "Paraphrase" }
   ],
   
   // Supported languages for translation
@@ -109,34 +108,62 @@ ZoteroAIAssistant.PDFReader = {
         .zai-selection-toolbar {
           position: fixed;
           z-index: 99999;
-          padding: 10px;
-          background: #ffffff;
-          border-radius: 8px;
-          width: 220px;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-          border: 1px solid #e5e7eb;
+          width: 240px;
+          padding: 12px 12px 10px;
+          border-radius: 12px;
+          background: linear-gradient(180deg, #f8fafc 0%, #ffffff 60%);
+          border: 1px solid #e2e8f0;
+          box-shadow: 0 16px 40px rgba(15, 23, 42, 0.18);
+          color: #0f172a;
+          font-family: "Avenir Next", "Avenir", "Helvetica Neue", "Noto Sans", sans-serif;
+          letter-spacing: 0.01em;
+          --zai-sel-accent: #0d9488;
+          --zai-sel-accent-dark: #0f766e;
+          --zai-sel-muted: #64748b;
+          --zai-sel-border: #e2e8f0;
+          --zai-sel-surface: #f8fafc;
         }
         .zai-selection-toolbar * {
           box-sizing: border-box;
+          font-family: inherit;
         }
         .zai-sel-header {
-          color: #0d9488;
-          font-size: 11px;
-          font-weight: 600;
-          margin-bottom: 8px;
-          text-align: center;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding-bottom: 8px;
+          margin-bottom: 10px;
+          border-bottom: 1px solid var(--zai-sel-border);
+        }
+        .zai-sel-title,
+        .zai-sel-loading {
+          font-size: 12px;
+          font-weight: 700;
+          color: #0f172a;
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .zai-sel-title::before,
+        .zai-sel-loading::before {
+          content: "";
+          width: 6px;
+          height: 6px;
+          border-radius: 999px;
+          background: var(--zai-sel-accent);
+          box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.18);
         }
         .zai-sel-loading {
-          color: #6b7280;
-          font-size: 11px;
+          color: var(--zai-sel-muted);
+          font-weight: 600;
         }
         .zai-sel-actions {
           width: 100%;
         }
         .zai-sel-row {
           display: flex;
-          gap: 6px;
-          margin-bottom: 6px;
+          gap: 8px;
+          margin-bottom: 8px;
           width: 100%;
         }
         .zai-sel-row:last-child {
@@ -144,67 +171,91 @@ ZoteroAIAssistant.PDFReader = {
         }
         .zai-sel-btn {
           flex: 1;
-          padding: 6px 0;
-          background: #f3f4f6;
-          border: 1px solid #e5e7eb;
-          border-radius: 4px;
+          padding: 8px 0;
+          background: #ffffff;
+          border: 1px solid var(--zai-sel-border);
+          border-radius: 8px;
           cursor: pointer;
           font-size: 11px;
-          font-weight: 500;
-          color: #374151;
+          font-weight: 600;
+          color: #1f2937;
           text-align: center;
+          transition: transform 0.12s ease, box-shadow 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
         }
         .zai-sel-btn:hover {
-          background: #0d9488;
-          border-color: #0d9488;
-          color: white;
+          background: var(--zai-sel-accent);
+          border-color: var(--zai-sel-accent);
+          color: #fff;
+          transform: translateY(-1px);
+          box-shadow: 0 8px 16px rgba(13, 148, 136, 0.2);
+        }
+        .zai-sel-btn:active {
+          transform: translateY(0);
+          box-shadow: none;
         }
         .zai-sel-result {
           margin-top: 10px;
           text-align: left;
         }
         .zai-sel-result-text {
-          background: #f0fdf4;
-          border: 1px solid #86efac;
-          border-radius: 6px;
+          background: var(--zai-sel-surface);
+          border: 1px solid var(--zai-sel-border);
+          border-radius: 8px;
           padding: 10px;
           font-size: 12px;
-          line-height: 1.5;
-          color: #1f2937;
-          max-height: 180px;
+          line-height: 1.6;
+          color: #111827;
+          max-height: 200px;
           overflow-y: auto;
           white-space: pre-wrap;
           word-wrap: break-word;
+          -moz-user-select: text;
+          user-select: text;
         }
         .zai-sel-result-actions {
-          display: flex;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
           gap: 6px;
           margin-top: 8px;
         }
-        .zai-sel-copy-btn, .zai-sel-back-btn, .zai-sel-annotate-btn {
-          flex: 1;
-          padding: 5px 0;
-          border: 1px solid #d1d5db;
-          border-radius: 4px;
-          background: #fff;
+        .zai-sel-copy-btn,
+        .zai-sel-back-btn,
+        .zai-sel-annotate-btn {
+          padding: 6px 0;
+          border-radius: 7px;
           font-size: 11px;
-          font-weight: 500;
+          font-weight: 600;
           cursor: pointer;
-          color: #374151;
           text-align: center;
+          border: 1px solid var(--zai-sel-border);
+          background: #fff;
+          color: #1f2937;
+          white-space: nowrap;
+          transition: transform 0.12s ease, box-shadow 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
         }
-        .zai-sel-copy-btn:hover, .zai-sel-annotate-btn:hover {
-          background: #0d9488;
-          border-color: #0d9488;
-          color: white;
+        .zai-sel-copy-btn {
+          background: var(--zai-sel-accent);
+          border-color: var(--zai-sel-accent-dark);
+          color: #fff;
+        }
+        .zai-sel-copy-btn:hover {
+          background: var(--zai-sel-accent-dark);
+          border-color: var(--zai-sel-accent-dark);
+          box-shadow: 0 6px 14px rgba(13, 148, 136, 0.25);
+        }
+        .zai-sel-annotate-btn:hover {
+          background: var(--zai-sel-accent);
+          border-color: var(--zai-sel-accent);
+          color: #fff;
+        }
+        .zai-sel-back-btn {
+          background: #f1f5f9;
+          color: var(--zai-sel-muted);
+          border-style: dashed;
         }
         .zai-sel-back-btn:hover {
-          background: #f3f4f6;
-        }
-        .zai-sel-result-actions {
-          display: flex;
-          flex-wrap: wrap;
-          gap: 4px;
+          background: #e2e8f0;
+          color: #334155;
         }
       `;
       container.prepend(style);
@@ -360,15 +411,14 @@ ZoteroAIAssistant.PDFReader = {
       setTimeout(() => {
         const zoteroPopup = container.closest('[class*="popup"], [class*="Popup"], .annotation-popup');
         if (zoteroPopup) {
-          const toolbarWidth = 220;
-          
           // Function to update position
           const updatePosition = () => {
             if (!doc.body.contains(container)) return;
             const rect = zoteroPopup.getBoundingClientRect();
+            const toolbarWidth = container.getBoundingClientRect().width || 240;
             const centerX = rect.left + (rect.width / 2) - (toolbarWidth / 2);
-            container.style.left = centerX + 'px';
-            container.style.top = (rect.bottom + 8) + 'px';
+            container.style.left = centerX + "px";
+            container.style.top = (rect.bottom + 8) + "px";
           };
           
           // Initial position
@@ -516,8 +566,7 @@ ZoteroAIAssistant.PDFReader = {
       explain: "Explanation", 
       define: "Definition",
       summarize: "Summary",
-      paraphrase: "Paraphrase",
-      ask: "Ask AI"
+      paraphrase: "Paraphrase"
     };
     return titles[action] || action;
   },
@@ -609,11 +658,6 @@ ZoteroAIAssistant.PDFReader = {
         case "paraphrase":
           prompt = `Paraphrase this text in different words:\n\n"${selectedText}"`;
           break;
-        case "ask":
-          // For "Ask AI", open the floating window with context
-          if (ZAI.setSelectedText) ZAI.setSelectedText(selectedText);
-          if (ZAI.openFloatingWindow) ZAI.openFloatingWindow();
-          return "Opening AI Assistant...";
         default:
           return "Unknown action";
       }
@@ -713,34 +757,27 @@ ZoteroAIAssistant.PDFReader = {
         prompt = `Paraphrase the following text ${paperContext} in different words while maintaining the same meaning. Make it suitable for academic notes:\n\n"${selectedText}"`;
         break;
         
-      case "ask":
-        // Open the floating window with the selected text
-        this.openFloatingWithContext(ZAI, selectedText, item);
-        return;
-        
       default:
         Zotero.debug("ZoteroAIAssistant.PDFReader: Unknown action: " + action);
         return;
     }
     
-    Zotero.debug("ZoteroAIAssistant.PDFReader: Prompt created, opening floating window...");
+    Zotero.debug("ZoteroAIAssistant.PDFReader: Prompt created, sending to assistant...");
     
-    // Open floating window and send message
+    // Send message to the assistant (sidebar)
     this.sendToFloatingWindow(ZAI, prompt, item, selectedText, action);
   },
   
   /**
-   * Open floating window and send a message
+   * Send a message to the assistant (sidebar)
    */
   sendToFloatingWindow(ZAI, prompt, item, selectedText, action) {
     try {
-      // Open the floating window
-      if (ZAI.openFloatingWindow) {
-        ZAI.openFloatingWindow();
-        Zotero.debug("ZoteroAIAssistant.PDFReader: Floating window opened");
+      if (ZAI.toggleAssistant) {
+        ZAI.toggleAssistant(true);
       }
       
-      // Wait a bit for the window to initialize, then send the message
+      // Wait a bit for the UI to initialize, then send the message
       const mainWindow = Zotero.getMainWindow();
       mainWindow.setTimeout(async () => {
         try {
@@ -762,30 +799,10 @@ ZoteroAIAssistant.PDFReader = {
           Zotero.debug("ZoteroAIAssistant.PDFReader: Failed to send message: " + error);
           Services.prompt.alert(null, "AI Assistant Error", "Failed to send message: " + error.message);
         }
-      }, 500); // Wait 500ms for window to initialize
+      }, 200); // Wait for UI to initialize
     } catch (error) {
       Zotero.debug("ZoteroAIAssistant.PDFReader: sendToFloatingWindow error: " + error);
       Services.prompt.alert(null, "AI Assistant Error", "Error: " + error.message);
-    }
-  },
-  
-  /**
-   * Open floating window with selected text as context
-   */
-  openFloatingWithContext(ZAI, selectedText, item) {
-    try {
-      // Store context for the floating window
-      if (ZAI.setSelectedText) {
-        ZAI.setSelectedText(selectedText);
-      }
-      
-      // Open the floating window
-      if (ZAI.openFloatingWindow) {
-        ZAI.openFloatingWindow();
-        Zotero.debug("ZoteroAIAssistant.PDFReader: Floating window opened with context");
-      }
-    } catch (error) {
-      Zotero.debug("ZoteroAIAssistant.PDFReader: openFloatingWithContext error: " + error);
     }
   },
   

@@ -53,10 +53,14 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   box-sizing: border-box;
   background: var(--zai-gray-50);
+  -moz-user-select: text;
+  user-select: text;
 }
 
 .zai-chat-container * {
   box-sizing: border-box;
+  -moz-user-select: text;
+  user-select: text;
 }
 
 /* ================================
@@ -133,6 +137,7 @@
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  align-items: center;
 }
 
 .zai-provider-selector select,
@@ -162,6 +167,25 @@
   box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.1);
 }
 
+.zai-clear-btn {
+  padding: 8px 12px;
+  border: 1px dashed var(--zai-gray-300);
+  border-radius: var(--zai-radius);
+  background: #fff;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--zai-gray-600);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.zai-clear-btn:hover {
+  background: var(--zai-error-light);
+  border-color: var(--zai-error);
+  color: var(--zai-error);
+}
+
 /* ================================
    Messages Area
    ================================ */
@@ -172,6 +196,8 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  -moz-user-select: text;
+  user-select: text;
 }
 
 .zai-message {
@@ -181,6 +207,8 @@
   line-height: 1.6;
   font-size: 13px;
   box-shadow: var(--zai-shadow-sm);
+  -moz-user-select: text;
+  user-select: text;
 }
 
 .zai-message-user {
@@ -198,9 +226,39 @@
   border: 1px solid var(--zai-gray-200);
 }
 
+.zai-message-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 6px;
+}
+
+.zai-message-copy {
+  border: 1px solid var(--zai-gray-200);
+  background: var(--zai-gray-50);
+  color: var(--zai-gray-600);
+  border-radius: var(--zai-radius-sm);
+  font-size: 11px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.zai-message-copy:hover {
+  background: #fff;
+  border-color: var(--zai-primary);
+  color: var(--zai-primary);
+}
+
 .zai-message-content {
   word-wrap: break-word;
   overflow-wrap: break-word;
+  -moz-user-select: text;
+  user-select: text;
+}
+
+.zai-message-content * {
+  -moz-user-select: text;
+  user-select: text;
 }
 
 /* Markdown Styles */
@@ -777,29 +835,61 @@
    Floating Window Styles
    ================================ */
 .zai-floating-window {
+  position: relative;
   display: flex;
   flex-direction: column;
-  height: 100vh;
-  background: #fff;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  height: 100%;
+  min-height: 100vh;
+  padding: 14px;
+  gap: 10px;
+  background:
+    radial-gradient(120% 80% at 0% 0%, rgba(13, 148, 136, 0.12) 0%, rgba(13, 148, 136, 0) 55%),
+    radial-gradient(90% 70% at 100% 0%, rgba(15, 118, 110, 0.12) 0%, rgba(15, 118, 110, 0) 60%),
+    linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-radius: 12px;
+  color: #0f172a;
+  font-family: "Avenir Next", "Avenir", "Futura", "Gill Sans", "Helvetica Neue", sans-serif;
+  overflow: hidden;
+  animation: zai-floating-in 0.25s ease;
+  --zai-floating-border: rgba(15, 23, 42, 0.08);
+  --zai-floating-surface: rgba(255, 255, 255, 0.92);
+  --zai-floating-shadow: 0 12px 26px rgba(15, 23, 42, 0.12);
 }
 
 .zai-floating-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
-  background: var(--zai-gray-50);
-  border-bottom: 1px solid var(--zai-gray-200);
+  padding: 12px 14px;
+  background: var(--zai-floating-surface);
+  border: 1px solid var(--zai-floating-border);
+  border-radius: 12px;
+  box-shadow: var(--zai-floating-shadow);
 }
 
 .zai-floating-title {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-weight: 600;
-  font-size: 14px;
-  color: var(--zai-gray-800);
+  font-weight: 700;
+  font-size: 15px;
+  letter-spacing: 0.03em;
+  color: #0f172a;
+}
+
+.zai-floating-title span {
+  position: relative;
+}
+
+.zai-floating-title span::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: -6px;
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--zai-primary);
 }
 
 .zai-title-icon {
@@ -809,25 +899,32 @@
 
 .zai-floating-controls {
   display: flex;
-  gap: 4px;
+  gap: 8px;
 }
 
 .zai-icon-btn {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  border-radius: var(--zai-radius-sm);
+  width: auto;
+  height: auto;
+  padding: 6px 12px;
+  border: 1px solid var(--zai-floating-border);
+  background: #fff;
+  border-radius: 999px;
   cursor: pointer;
-  color: var(--zai-gray-500);
+  color: #475569;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: all 0.15s ease;
 }
 
 .zai-icon-btn:hover {
-  background: var(--zai-gray-200);
-  color: var(--zai-gray-700);
+  background: var(--zai-primary);
+  color: #fff;
+  border-color: var(--zai-primary);
 }
 
 .zai-icon-btn.active {
@@ -835,20 +932,182 @@
   color: #fff;
 }
 
+.zai-icon-btn-danger {
+  border-color: rgba(239, 68, 68, 0.35);
+  color: #b91c1c;
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.zai-icon-btn-danger:hover {
+  background: #ef4444;
+  border-color: #ef4444;
+  color: #fff;
+}
+
 /* Paper info bar */
 .zai-paper-info {
-  padding: 8px 12px;
-  background: var(--zai-gray-100);
-  border-bottom: 1px solid var(--zai-gray-200);
+  padding: 10px 12px;
+  background: var(--zai-floating-surface);
+  border: 1px solid var(--zai-floating-border);
+  border-left: 3px solid var(--zai-primary);
+  border-radius: 12px;
+  box-shadow: var(--zai-shadow-sm);
 }
 
 .zai-paper-title {
   font-size: 12px;
-  color: var(--zai-gray-700);
+  font-weight: 600;
+  color: #1f2937;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   display: block;
+}
+
+.zai-floating-window .zai-auth-status {
+  margin: 0;
+  background: var(--zai-floating-surface);
+  border: 1px dashed rgba(13, 148, 136, 0.35);
+  border-radius: 12px;
+  box-shadow: var(--zai-shadow-sm);
+}
+
+.zai-floating-window .zai-auth-btn {
+  border-radius: 999px;
+  padding: 6px 16px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.zai-floating-window .zai-provider-selector {
+  margin: 0;
+  padding: 10px 12px;
+  background: var(--zai-floating-surface);
+  border: 1px solid var(--zai-floating-border);
+  border-radius: 12px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+  box-shadow: var(--zai-shadow-sm);
+}
+
+.zai-floating-window .zai-provider-selector select {
+  background-color: #f8fafc;
+  border-color: var(--zai-floating-border);
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.zai-floating-window .zai-messages {
+  margin: 0;
+  padding: 12px;
+  background: #fff;
+  border: 1px solid var(--zai-floating-border);
+  border-radius: 14px;
+  box-shadow: var(--zai-shadow-sm);
+}
+
+.zai-floating-window .zai-welcome-text {
+  font-size: 13px;
+  color: #64748b;
+  font-weight: 600;
+  text-align: center;
+}
+
+.zai-floating-window .zai-quick-actions {
+  margin: 0;
+  padding: 10px;
+  background: var(--zai-floating-surface);
+  border: 1px solid var(--zai-floating-border);
+  border-radius: 12px;
+  box-shadow: var(--zai-shadow-sm);
+}
+
+.zai-floating-window .zai-action-btn {
+  border-radius: 999px;
+  border-color: var(--zai-floating-border);
+  background: #f8fafc;
+  color: #334155;
+  font-size: 11px;
+  font-weight: 600;
+  transition: all 0.15s ease;
+}
+
+.zai-floating-window .zai-action-btn:hover {
+  background: var(--zai-primary);
+  border-color: var(--zai-primary);
+  color: #fff;
+}
+
+.zai-floating-window .zai-input-area {
+  margin: 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid var(--zai-floating-border);
+  border-radius: 14px;
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  gap: 8px;
+  align-items: center;
+  box-shadow: var(--zai-shadow-sm);
+}
+
+.zai-floating-window .zai-attach-btn {
+  width: 34px;
+  height: 34px;
+  border-radius: 10px;
+  border: 1px solid var(--zai-floating-border);
+  background: #f1f5f9;
+  color: #0f172a;
+  font-weight: 700;
+  font-size: 16px;
+}
+
+.zai-floating-window #zai-input {
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  color: #0f172a;
+  resize: none;
+}
+
+.zai-floating-window #zai-input:focus {
+  outline: none;
+}
+
+.zai-floating-window #zai-send-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+  background: linear-gradient(135deg, #0d9488 0%, #0f766e 100%);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+}
+
+.zai-floating-window #zai-send-btn:hover {
+  filter: brightness(0.95);
+}
+
+@keyframes zai-floating-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .zai-floating-window {
+    animation: none;
+  }
 }
 
 /* ================================

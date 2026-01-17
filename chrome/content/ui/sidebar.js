@@ -287,6 +287,14 @@ ZoteroAIAssistant.Sidebar = {
     
     selectorDiv.appendChild(modelSelect);
     this.modelSelect = modelSelect;
+
+    const clearBtn = doc.createElementNS(XHTML_NS, "button");
+    clearBtn.id = "zai-clear-btn";
+    clearBtn.className = "zai-clear-btn";
+    clearBtn.textContent = "Clear";
+    clearBtn.title = "Clear history for this paper";
+    selectorDiv.appendChild(clearBtn);
+    this.clearButton = clearBtn;
   },
   
   /**
@@ -424,6 +432,10 @@ ZoteroAIAssistant.Sidebar = {
     this.modelSelect?.addEventListener("change", (e) => {
       Zotero.Prefs.set("extensions.zotero-ai-assistant.defaultModel", e.target.value, true);
     });
+
+    // Clear history button
+    const clearBtn = this.container?.querySelector("#zai-clear-btn");
+    clearBtn?.addEventListener("click", () => this.handleClearHistory());
     
     // Quick actions
     const quickActions = this.container?.querySelector("#zai-quick-actions");
@@ -734,11 +746,39 @@ ZoteroAIAssistant.Sidebar = {
         break;
         
       case "clear":
-        ZoteroAIAssistant.ChatManager?.clearConversation();
+        await ZoteroAIAssistant.ChatManager?.clearConversation();
         this.clearMessages();
         this.updateExportVisibility();
         break;
     }
+  },
+
+  async handleClearHistory() {
+    if (!this.currentItem) {
+      this.showToast("No paper selected");
+      return;
+    }
+
+    let confirmed = true;
+    if (typeof Services !== "undefined" && Services.prompt?.confirm) {
+      confirmed = Services.prompt.confirm(
+        this.container?.ownerDocument?.defaultView || null,
+        "Clear History",
+        "Clear conversation history for this paper?"
+      );
+    } else if (this.container?.ownerDocument?.defaultView?.confirm) {
+      confirmed = this.container.ownerDocument.defaultView.confirm(
+        "Clear conversation history for this paper?"
+      );
+    }
+
+    if (!confirmed) return;
+
+    ZoteroAIAssistant.ChatManager?.setCurrentItem(this.currentItem);
+    await ZoteroAIAssistant.ChatManager?.clearConversation();
+    this.clearMessages();
+    this.updateExportVisibility();
+    this.showToast("History cleared");
   },
   
   /**
@@ -760,6 +800,49 @@ ZoteroAIAssistant.Sidebar = {
     setTimeout(() => {
       toast.classList.remove("zai-toast-visible");
     }, 2000);
+  },
+
+  getSelectedTextInMessage(messageEl) {
+    const doc = messageEl?.ownerDocument;
+    const view = doc?.defaultView;
+    const selection = view?.getSelection?.() || doc?.getSelection?.();
+    if (!selection || selection.isCollapsed || selection.rangeCount === 0) {
+      return null;
+    }
+
+    const range = selection.getRangeAt(0);
+    const anchor = selection.anchorNode;
+    const focus = selection.focusNode;
+
+    if (!messageEl.contains(range.commonAncestorContainer)) {
+      if (!messageEl.contains(anchor) || !messageEl.contains(focus)) {
+        return null;
+      }
+    }
+
+    const text = selection.toString();
+    if (!text || !text.trim()) {
+      return null;
+    }
+
+    return text;
+  },
+
+  copyAssistantMessage(messageEl) {
+    const selectedText = this.getSelectedTextInMessage(messageEl);
+    const content = selectedText || messageEl?.dataset?.rawContent;
+    if (!content) {
+      this.showToast("Nothing to copy");
+      return false;
+    }
+
+    if (ZoteroAIAssistant.ExportHelper?.copyResponse(content)) {
+      this.showToast(selectedText ? "Copied selection" : "Copied response");
+      return true;
+    }
+
+    this.showToast("Copy failed");
+    return false;
   },
   
   /**
@@ -852,10 +935,17 @@ ZoteroAIAssistant.Sidebar = {
   /**
    * Load conversation history for current item
    */
-  loadConversation() {
+  async loadConversation() {
     if (!this.currentItem || !this.messagesContainer) return;
-    
+
+    const itemId = this.currentItem.id;
     ZoteroAIAssistant.ChatManager.setCurrentItem(this.currentItem);
+    await ZoteroAIAssistant.ChatManager.ensureConversationLoaded(this.currentItem);
+
+    if (!this.currentItem || this.currentItem.id !== itemId) {
+      return;
+    }
+
     const messages = ZoteroAIAssistant.ChatManager.getDisplayMessages();
     
     if (messages.length > 0) {
@@ -945,6 +1035,9 @@ ZoteroAIAssistant.Sidebar = {
         task: options.task,
         onChunk: (chunk) => {
           fullResponse += chunk;
+          if (assistantMsg) {
+            assistantMsg.dataset.rawContent = fullResponse;
+          }
           contentEl.innerHTML = this.renderMarkdown(fullResponse);
           this.scrollToBottom();
         }
@@ -952,14 +1045,26 @@ ZoteroAIAssistant.Sidebar = {
       
       if (result.success) {
         contentEl.innerHTML = this.renderMarkdown(result.content);
+        if (assistantMsg) {
+          assistantMsg.dataset.rawContent = result.content || "";
+        }
       } else {
         contentEl.innerHTML = `<span class="zai-error">Error: ${result.error}</span>`;
+        if (assistantMsg) {
+          assistantMsg.dataset.rawContent = "";
+        }
       }
     } catch (error) {
       if (error.name === "AbortError") {
         contentEl.innerHTML = "<em>Message cancelled</em>";
+        if (assistantMsg) {
+          assistantMsg.dataset.rawContent = "";
+        }
       } else {
         contentEl.innerHTML = `<span class="zai-error">Error: ${error.message}</span>`;
+        if (assistantMsg) {
+          assistantMsg.dataset.rawContent = "";
+        }
       }
     } finally {
       this.isStreaming = false;
@@ -1017,6 +1122,7 @@ ZoteroAIAssistant.Sidebar = {
       
       if (loadingMsg) {
         loadingMsg.querySelector(".zai-message-content").innerHTML = this.renderMarkdown(result.message);
+        loadingMsg.dataset.rawContent = result.message || "";
       }
       
       if (result.success) {
@@ -1025,6 +1131,7 @@ ZoteroAIAssistant.Sidebar = {
     } catch (error) {
       if (loadingMsg) {
         loadingMsg.querySelector(".zai-message-content").textContent = "Error comparing papers: " + error.message;
+        loadingMsg.dataset.rawContent = "";
       }
     }
   },
@@ -1130,6 +1237,23 @@ ZoteroAIAssistant.Sidebar = {
     const msgEl = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
     msgEl.className = `zai-message zai-message-${role}`;
     
+    if (role === "assistant") {
+      msgEl.dataset.rawContent = content || "";
+
+      const actionsEl = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
+      actionsEl.className = "zai-message-actions";
+
+      const copyBtn = doc.createElementNS("http://www.w3.org/1999/xhtml", "button");
+      copyBtn.className = "zai-message-copy";
+      copyBtn.type = "button";
+      copyBtn.textContent = "Copy";
+      copyBtn.title = "Copy response or selection";
+      copyBtn.addEventListener("click", () => this.copyAssistantMessage(msgEl));
+
+      actionsEl.appendChild(copyBtn);
+      msgEl.appendChild(actionsEl);
+    }
+
     const contentEl = doc.createElementNS("http://www.w3.org/1999/xhtml", "div");
     contentEl.className = "zai-message-content";
     contentEl.innerHTML = role === "assistant" ? this.renderMarkdown(content) : this.escapeHtml(content);

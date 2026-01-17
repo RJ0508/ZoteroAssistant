@@ -23,6 +23,7 @@
     var rootURI = "";
     var provider = "copilot";
     var pollTimer = null;
+    var isAuthenticating = false;
     var mainWindow = null;
     var ZoteroRef = null;
     var ZAIRef = null;
@@ -87,7 +88,6 @@
         const bindButton = (id, handler) => {
           const el = document.getElementById(id);
           if (!el) return;
-          el.addEventListener("click", handler);
           el.addEventListener("command", handler);
         };
         
@@ -123,6 +123,8 @@
     }
     
     async function startGitHubAuth() {
+      if (isAuthenticating) return;
+      isAuthenticating = true;
       showStep("step2");
       
       try {
@@ -183,15 +185,18 @@
           document.getElementById("zai-github-user").value = "Connected successfully!";
         }
         showStep("step3");
-        
       } catch (error) {
         log("ZoteroAIAssistant Auth: Error - " + error.message);
         log("ZoteroAIAssistant Auth: Error stack - " + error.stack);
         showError(error.message || "Authentication failed. Please try again.");
+      } finally {
+        isAuthenticating = false;
       }
     }
     
     async function startOpenAIAuth() {
+      if (isAuthenticating) return;
+      isAuthenticating = true;
       showStep("step2");
       
       try {
@@ -209,6 +214,8 @@
         }
       } catch (error) {
         showError(error.message);
+      } finally {
+        isAuthenticating = false;
       }
     }
     
@@ -232,6 +239,7 @@
         clearTimeout(pollTimer);
         pollTimer = null;
       }
+      isAuthenticating = false;
       showStep("step1");
     }
     

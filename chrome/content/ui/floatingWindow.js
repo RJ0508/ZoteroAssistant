@@ -188,6 +188,11 @@ var ZoteroAIAssistantFloating = {
     document.getElementById("zai-settings-btn")?.addEventListener("click", () => {
       this.openSettings();
     });
+
+    // Clear history button
+    document.getElementById("zai-clear-btn")?.addEventListener("click", () => {
+      this.clearHistory();
+    });
   },
 
   showAttachmentMenu() {
@@ -470,7 +475,7 @@ var ZoteroAIAssistantFloating = {
   /**
    * Set the current item
    */
-  setItem(item) {
+  async setItem(item) {
     this.currentItem = item;
     this.clearPendingImages();
     
@@ -480,6 +485,7 @@ var ZoteroAIAssistantFloating = {
       
       // Load conversation for this item
       ZoteroAIAssistant.ChatManager.setCurrentItem(item);
+      await ZoteroAIAssistant.ChatManager.ensureConversationLoaded(item);
       const messages = ZoteroAIAssistant.ChatManager.getDisplayMessages();
       
       if (messages.length > 0) {
@@ -508,6 +514,33 @@ var ZoteroAIAssistantFloating = {
         <div class="zai-welcome-text">${message}</div>
       </div>
     `;
+  },
+
+  async clearHistory() {
+    if (!this.currentItem) {
+      this.showWelcome("No paper selected");
+      return;
+    }
+
+    let confirmed = true;
+    if (typeof Services !== "undefined" && Services.prompt?.confirm) {
+      confirmed = Services.prompt.confirm(
+        window,
+        "Clear History",
+        "Clear conversation history for this paper?"
+      );
+    } else if (typeof window.confirm === "function") {
+      confirmed = window.confirm("Clear conversation history for this paper?");
+    }
+
+    if (!confirmed) return;
+
+    if (ZoteroAIAssistant?.ChatManager) {
+      ZoteroAIAssistant.ChatManager.setCurrentItem(this.currentItem);
+      await ZoteroAIAssistant.ChatManager.clearConversation();
+    }
+
+    this.showWelcome("Conversation cleared");
   },
   
   /**
