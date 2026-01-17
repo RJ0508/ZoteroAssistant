@@ -1,7 +1,7 @@
 {
   "name": "zotero-ai-assistant",
   "version": "1.0.3",
-  "description": "AI-powered reading assistant for Zotero using GitHub Copilot and OpenAI Codex",
+  "description": "AI-powered reading assistant for Zotero using GitHub Copilot",
   "author": "Yingqi Jia",
   "license": "MIT",
   "scripts": {
