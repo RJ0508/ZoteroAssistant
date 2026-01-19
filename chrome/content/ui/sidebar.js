@@ -17,6 +17,7 @@ ZoteroAIAssistant.Sidebar = {
   attachButton: null,
   providerSelect: null,
   modelSelect: null,
+  availableCopilotModelIds: null,
   
   // State
   currentItem: null,
@@ -316,6 +317,11 @@ ZoteroAIAssistant.Sidebar = {
       for (const providerKey of providerOrder) {
         const providerModels = grouped[providerKey];
         if (!providerModels || providerModels.length === 0) continue;
+
+        const filteredModels = this.availableCopilotModelIds
+          ? providerModels.filter(model => this.availableCopilotModelIds.has(model.id))
+          : providerModels;
+        if (!filteredModels.length) continue;
         
         const providerName = ZoteroAIAssistant.ModelRegistry.getProviderName(providerKey);
         
@@ -325,7 +331,7 @@ ZoteroAIAssistant.Sidebar = {
         header.textContent = `[${providerName}]`;
         selectEl.appendChild(header);
         
-        for (const model of providerModels) {
+        for (const model of filteredModels) {
           const opt = doc.createElementNS(XHTML_NS, "option");
           opt.value = model.id;
           opt.textContent = `  ${model.name}`;
@@ -407,13 +413,13 @@ ZoteroAIAssistant.Sidebar = {
    */
   bindEvents() {
     // Send button
-    this.sendButton?.addEventListener("click", () => this.sendMessage());
+    this.sendButton?.addEventListener("click", () => this.handleSendButtonClick());
     
     // Input area - Enter to send, Shift+Enter for newline
     this.inputArea?.addEventListener("keydown", (e) => {
       if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
-        this.sendMessage();
+        this.handleSendButtonClick();
       }
     });
     
@@ -884,6 +890,7 @@ ZoteroAIAssistant.Sidebar = {
       const defaultModel = ZoteroAIAssistant.ModelRegistry.getDefaultModel(provider);
       this.populateModelSelect(this.modelSelect, provider, defaultModel.id);
       Zotero.Prefs.set("extensions.zotero-ai-assistant.defaultModel", defaultModel.id, true);
+      this.refreshCopilotModels();
     }
     
     // Update auth status
@@ -915,6 +922,9 @@ ZoteroAIAssistant.Sidebar = {
       
       if (isAuthenticated) {
         authStatus.style.display = "none";
+        if (provider === "copilot") {
+          this.refreshCopilotModels();
+        }
       } else {
         authStatus.style.display = "flex";
         authStatus.className = "zai-auth-status zai-auth-required";
@@ -929,6 +939,36 @@ ZoteroAIAssistant.Sidebar = {
       authStatus.className = "zai-auth-status zai-auth-required";
       statusText.textContent = "Not connected";
       authBtn.textContent = "Connect";
+    }
+  },
+
+  async refreshCopilotModels() {
+    if (!ZoteroAIAssistant.CopilotClient || !this.modelSelect) return;
+
+    try {
+      const available = await ZoteroAIAssistant.CopilotClient.getAvailableModels();
+      if (!Array.isArray(available) || available.length === 0) return;
+
+      this.availableCopilotModelIds = new Set(available);
+
+      const current = Zotero.Prefs.get("extensions.zotero-ai-assistant.defaultModel", true) || "";
+      let selected = current;
+
+      if (!this.availableCopilotModelIds.has(current)) {
+        const fallback = ZoteroAIAssistant.CopilotClient.pickFallbackModel(available) || available[0];
+        if (fallback) {
+          selected = fallback;
+          Zotero.Prefs.set("extensions.zotero-ai-assistant.defaultModel", selected, true);
+          const fallbackModel = ZoteroAIAssistant.ModelRegistry.getModel("copilot", selected);
+          if (fallbackModel) {
+            this.showToast(`Model unavailable, using ${fallbackModel.name}`);
+          }
+        }
+      }
+
+      this.populateModelSelect(this.modelSelect, "copilot", selected);
+    } catch (error) {
+      Zotero.debug("ZoteroAIAssistant.Sidebar: Failed to refresh models: " + error);
     }
   },
   
@@ -1395,7 +1435,6 @@ ZoteroAIAssistant.Sidebar = {
       rect.setAttribute("rx", "2");
       svg.appendChild(rect);
       this.sendButton.title = "Stop";
-      this.sendButton.onclick = () => this.abortController?.abort();
     } else {
       svg.setAttribute("fill", "none");
       svg.setAttribute("stroke", "currentColor");
@@ -1404,10 +1443,17 @@ ZoteroAIAssistant.Sidebar = {
       path.setAttribute("d", "M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z");
       svg.appendChild(path);
       this.sendButton.title = "Send message";
-      this.sendButton.onclick = () => this.sendMessage();
     }
 
     this.sendButton.appendChild(svg);
+  },
+
+  handleSendButtonClick() {
+    if (this.isStreaming) {
+      this.abortController?.abort();
+      return;
+    }
+    this.sendMessage();
   },
   
   /**
